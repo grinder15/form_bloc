@@ -83,7 +83,15 @@ class AllFieldsFormBloc extends FormBloc<String, String> {
   }
 }
 
-class AllFieldsForm extends StatelessWidget {
+class AllFieldsForm extends StatefulWidget {
+  @override
+  _AllFieldsFormState createState() => _AllFieldsFormState();
+}
+
+class _AllFieldsFormState extends State<AllFieldsForm> {
+  String _selection;
+  String _dropdownSelection;
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -104,6 +112,7 @@ class AllFieldsForm extends StatelessWidget {
               appBar: AppBar(title: Text('Built-in Widgets')),
               floatingActionButton: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: <Widget>[
                   FloatingActionButton.extended(
                     heroTag: null,
@@ -142,6 +151,72 @@ class AllFieldsForm extends StatelessWidget {
                     padding: const EdgeInsets.all(24.0),
                     child: Column(
                       children: <Widget>[
+                        ButtonTheme(
+                          alignedDropdown: true,
+                          child: DropdownButton<String>(
+                            underline: Container(),
+                            value: _dropdownSelection,
+                            items: [
+                              DropdownMenuItem(
+                                child: Text('Value 1'),
+                                value: 'Value 1',
+                              ),
+                              DropdownMenuItem(
+                                child: Text('Value 2'),
+                                value: 'Value 2',
+                              ),
+                              DropdownMenuItem(
+                                child: Text('Value 3'),
+                                value: 'Value 3',
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _dropdownSelection = value;
+                              });
+                            },
+                            isExpanded: true,
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          onSelected: (String value) {
+                            setState(() {
+                              _selection = value;
+                            });
+                          },
+                          child: ListTile(
+                            leading: IconButton(
+                              icon: Icon(Icons.add_alarm),
+                              onPressed: () {
+                                print('Hello world');
+                              },
+                            ),
+                            title: Text('Title'),
+                            subtitle: Text(_selection == null
+                                ? 'Nothing selected yet'
+                                : _selection.toString()),
+                            trailing: Icon(Icons.account_circle),
+                          ),
+                          offset: const Offset(0.0, 100.0),
+                          itemBuilder: (BuildContext context) =>
+                              <PopupMenuEntry<String>>[
+                            const PopupMenuItem<String>(
+                              value: 'Value1',
+                              child: SizedBox(
+                                width: 500.0,
+                                child: Text('Choose value 1'),
+                              ),
+                            ),
+                            const PopupMenuItem<String>(
+                              value: 'Value2',
+                              child: Text('Choose value 2'),
+                            ),
+                            const PopupMenuItem<String>(
+                              value: 'Value3',
+                              child: Text('Choose value 3'),
+                            ),
+                          ],
+                        ),
                         TextFieldBlocBuilder(
                           textFieldBloc: formBloc.text1,
                           decoration: InputDecoration(
