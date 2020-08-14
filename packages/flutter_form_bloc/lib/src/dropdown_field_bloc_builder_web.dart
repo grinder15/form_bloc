@@ -123,7 +123,7 @@ class _DropdownFieldBlocBuilderWebState<Value>
       focusNode: _effectiveFocusNode,
       child: BlocBuilder<SelectFieldBloc<Value, dynamic>,
           SelectFieldBlocState<Value, dynamic>>(
-        bloc: widget.selectFieldBloc,
+        cubit: widget.selectFieldBloc,
         builder: (context, fieldState) {
           final isEnabled = fieldBlocIsEnabled(
             isEnabled: widget.isEnabled,
@@ -231,7 +231,7 @@ class _DropdownFieldBlocBuilderWebState<Value>
   List<DropdownMenuItem<Value>> _buildItems(
     Iterable<Value> items,
   ) {
-    final style = Theme.of(context).textTheme.subhead.copyWith(
+    final style = Theme.of(context).textTheme.subtitle1.copyWith(
           color: ThemeData.estimateBrightnessForColor(
                       Theme.of(context).canvasColor) ==
                   Brightness.dark

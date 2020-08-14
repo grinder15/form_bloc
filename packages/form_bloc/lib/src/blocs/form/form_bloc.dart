@@ -41,12 +41,6 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
   /// See: [_onSubmitFormBloc] and [_setupFormBlocStateSubscription].
   bool _canSubmit = true;
 
-  /// Indicates if the initial state must be [FormBlocLoading].
-  final bool _isInitialStateLoading;
-
-  /// The value of [FormBlocState.isEditing] of the initial state.
-  final bool _isInitialStateEditing;
-
   /// Indicates if the [_fieldBlocs] must be autoValidated.
   final bool _autoValidate;
 
@@ -62,9 +56,13 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
       bool isEditing = false})
       : assert(isLoading != null),
         assert(autoValidate != null),
-        _isInitialStateLoading = isLoading,
-        _isInitialStateEditing = isEditing,
-        _autoValidate = autoValidate {
+        _autoValidate = autoValidate,
+        super(isLoading
+            ? FormBlocLoading(
+                isEditing: isEditing,
+                progress: 0.0,
+              )
+            : FormBlocLoaded(null, isEditing: isEditing)) {
     _callOnLoadingIfNeeded(isLoading);
     _initSetupAreAllFieldsValidSubscription();
   }
@@ -106,18 +104,6 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
     unawaited(super.close());
   }
 
-  @override
-  FormBlocState<SuccessResponse, FailureResponse> get initialState {
-    if (_isInitialStateLoading) {
-      return FormBlocLoading(
-        isEditing: _isInitialStateEditing,
-        progress: 0.0,
-      );
-    } else {
-      return FormBlocLoaded(null, isEditing: _isInitialStateEditing);
-    }
-  }
-
   /// Init the subscription to the state of each
   /// `fieldBloc` in [FieldBlocs] to update [FormBlocState._isValidByStep]
   /// when any `fieldBloc` changes it state.
@@ -137,7 +123,10 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
       (key, singleFieldBlocs) {
         _areAllFieldsValidSubscription[key] =
             Rx.combineLatest<FieldBlocState, List<FieldBlocState>>(
-          singleFieldBlocs,
+          singleFieldBlocs.map((fieldBloc) => Rx.merge([
+                Stream.value(fieldBloc.state),
+                fieldBloc,
+              ])),
           (fieldStates) {
             // if any value change, then can submit again
             _canSubmit = true;
@@ -173,10 +162,10 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
     } else if (event is ReloadFormBloc) {
       if (state is! FormBlocLoading) {
         yield state.toLoading();
-        onLoading();
+        await _callInBlocContext(onLoading);
       }
     } else if (event is LoadFormBloc) {
-      onLoading();
+      await _callInBlocContext(onLoading);
     } else if (event is CancelSubmissionFormBloc) {
       yield* _onCancelSubmissionFormBloc();
     } else if (event is UpdateFormBlocStateIsValid) {
@@ -203,6 +192,16 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
   // ===========================================================================
   // CALLBACKS
   // ===========================================================================
+
+  /// Pass exceptions from [callback] to [Bloc.onError] handler
+  /// You must call it with `await` keyword
+  Future<void> _callInBlocContext(void Function() callback) async {
+    try {
+      await callback();
+    } catch (exception, stackTrace) {
+      onError(exception, stackTrace);
+    }
+  }
 
   /// This method is called when [FormBlocState.isValid] is `true`
   /// and [submit] was called and [FormBlocState.canSubmit] is `true`.
@@ -437,8 +436,12 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
       _canSubmit = false;
       unawaited(_onSubmittingSubscription?.cancel());
       // get field blocs of the current step and validate
-      final allSingleFieldBlocs = FormBlocUtils.getAllSingleFieldBlocs(
-          stateSnapshot._fieldBlocs[stateSnapshot.currentStep]?.values ?? []);
+      final currentFieldBlocs = stateSnapshot?._fieldBlocs?.isEmpty ?? true
+          ? <FieldBloc>[]
+          : stateSnapshot?._fieldBlocs[stateSnapshot.currentStep]?.values ?? [];
+
+      final allSingleFieldBlocs =
+          FormBlocUtils.getAllSingleFieldBlocs(currentFieldBlocs);
 
       if (allSingleFieldBlocs.isEmpty) {
         final newState = stateSnapshot.toSubmitting(progress: 0.0);
@@ -447,7 +450,7 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
           (isStateUpdated) {
             if (isStateUpdated) {
               _canSubmit = true;
-              onSubmitting();
+              _callInBlocContext(onSubmitting);
 
               _onSubmittingSubscription.cancel();
             }
@@ -462,8 +465,30 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
           },
         );
 
+        final validatedFieldBlocs = List<
+            SingleFieldBloc<
+                dynamic,
+                dynamic,
+                FieldBlocState<dynamic, dynamic, dynamic>,
+                dynamic>>.from(allSingleFieldBlocs)
+          ..retainWhere((element) => element.state.isValidated);
+
+        final notValidatedFieldBlocs = List<
+            SingleFieldBloc<
+                dynamic,
+                dynamic,
+                FieldBlocState<dynamic, dynamic, dynamic>,
+                dynamic>>.from(allSingleFieldBlocs)
+          ..retainWhere((element) => !element.state.isValidated);
+
         _onSubmittingSubscription = Rx.combineLatest<FieldBlocState, bool>(
-          allSingleFieldBlocs,
+          notValidatedFieldBlocs.isEmpty
+              ? <Stream<FieldBlocState>>[
+                  BehaviorSubject<
+                          FieldBlocState<dynamic, dynamic, dynamic>>.seeded(
+                      validatedFieldBlocs.first.state)
+                ]
+              : notValidatedFieldBlocs,
           (states) => states.every((state) => state.isValidated),
         ).listen(
           (areValidated) async {
@@ -489,7 +514,7 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
                     null;
                 if (isStateUpdated) {
                   _canSubmit = true;
-                  onSubmitting();
+                  await _callInBlocContext(onSubmitting);
                 }
               } else {
                 final stateSnapshot = state;
@@ -548,9 +573,12 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
         currentStep: stateSnapshot.currentStep,
       );
       yield newState;
-      await firstWhere((state) => state == newState);
+      await Rx.merge([
+        Stream.value(state),
+        this,
+      ]).firstWhere((state) => state == newState);
 
-      onCancelingSubmission();
+      await _callInBlocContext(onCancelingSubmission);
     }
   }
 
@@ -564,7 +592,7 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
       currentStep: stateSnapshot.currentStep,
       deletingProgress: 0.0,
     );
-    onDeleting();
+    await _callInBlocContext(onDeleting);
   }
 
   Stream<FormBlocState<SuccessResponse, FailureResponse>>
@@ -656,7 +684,10 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
 
       yield newState;
 
-      await firstWhere((state) => state == newState);
+      await Rx.merge([
+        Stream.value(state),
+        this,
+      ]).firstWhere((state) => state == newState);
     }
   }
 
@@ -709,7 +740,10 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
 
         yield newState;
 
-        await firstWhere((state) => state == newState);
+        await Rx.merge([
+          Stream.value(state),
+          this,
+        ]).firstWhere((state) => state == newState);
       }
     }
   }
@@ -771,7 +805,10 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
 
       yield newState;
 
-      await firstWhere((state) => state == newState);
+      await Rx.merge([
+        Stream.value(state),
+        this,
+      ]).firstWhere((state) => state == newState);
     }
   }
 
@@ -846,7 +883,10 @@ abstract class FormBloc<SuccessResponse, FailureResponse> extends Bloc<
 
       yield newState;
 
-      await firstWhere((state) => state == newState);
+      await Rx.merge([
+        Stream.value(state),
+        this,
+      ]).firstWhere((state) => state == newState);
     }
   }
 }

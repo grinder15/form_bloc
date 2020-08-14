@@ -10,7 +10,8 @@ import 'package:quiver/core.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
 
-import '../form_bloc_delegate.dart';
+import '../form_bloc_observer.dart';
+import 'field_bloc_utils.dart';
 
 part '../boolean_field/boolean_field_bloc.dart';
 part '../boolean_field/boolean_field_state.dart';
@@ -79,13 +80,13 @@ abstract class SingleFieldBloc<
 
   final Duration _asyncValidatorDebounceTime;
 
+  /* Previously used to simplify initial state creation
+
   final Suggestions<Suggestion> _suggestions;
-
   final String _name;
-
   final dynamic Function(Value value) _toJson;
-
   final ExtraData _extraData;
+  */
 
   final PublishSubject<Value> _asyncValidatorsSubject = PublishSubject();
   StreamSubscription<UpdateFieldBlocStateError> _asyncValidatorsSubscription;
@@ -99,15 +100,16 @@ abstract class SingleFieldBloc<
     List<Validator<Value>> validators,
     List<AsyncValidator<Value>> asyncValidators,
     this._asyncValidatorDebounceTime,
-    this._suggestions,
+    Suggestions<Suggestion> suggestions,
     String name,
-    this._toJson,
-    this._extraData,
+    dynamic Function(Value value) toJson,
+    ExtraData extraData,
+    State initialState,
   )   : assert(_asyncValidatorDebounceTime != null),
         _validators = validators ?? [],
         _asyncValidators = asyncValidators ?? [],
-        _name = name ?? Uuid().v1() {
-    FormBlocDelegate.overrideDelegateOfBlocSupervisor();
+        super(initialState) {
+    FormBlocObserver.overrideDelegateOfBlocSupervisor();
     _setUpAsyncValidatorsSubscription();
   }
 
@@ -229,7 +231,7 @@ abstract class SingleFieldBloc<
   ///
   /// It is useful when you want to add errors that
   /// you have obtained when submitting the `FormBloc`.
-  void addError(String error, {bool isPermanent = false}) =>
+  void addFieldError(String error, {bool isPermanent = false}) =>
       add(AddFieldBlocError(
           value: value, error: error, isPermanent: isPermanent ?? false));
 

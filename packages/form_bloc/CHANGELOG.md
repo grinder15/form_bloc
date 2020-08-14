@@ -1,3 +1,26 @@
+# 0.19.1
+* Fix add `FormBloc` of items in `ListFieldBloc`.
+
+# 0.19.0
+## Breaking changes
+* Updated to `bloc: ^6.0.0`.
+* Fix `onError` of `FormBlocObserver`.
+
+# 0.18.0
+Bad version, you should use `>=0.19.0` or `<= 0.15.0`
+
+# 0.17.0
+Bad version, you should use `>=0.19.0` or `<= 0.15.0`
+
+# 0.16.0
+Bad version, you should use `>=0.19.0` or `<= 0.15.0`
+
+# 0.15.0
+## Breaking changes
+* Updated to `bloc: ^5.0.1`.
+* Change `Bloc.addError` to `Bloc.addFieldError`.
+* Change `FormBlocDelegate` to `FormBlocObserver`.
+
 # 0.14.0
 * Updated to `bloc: ^4.0.0`
 
