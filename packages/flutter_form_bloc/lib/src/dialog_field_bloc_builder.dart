@@ -124,7 +124,7 @@ class _DialogFieldBlocBuilderState<T> extends State<DialogFieldBlocBuilder<T>> {
         builder: (_, __) {
           return BlocBuilder<InputFieldBloc<T, Object>,
               InputFieldBlocState<T, Object>>(
-            bloc: widget.inputFieldBloc,
+            cubit: widget.inputFieldBloc,
             builder: (context, state) {
               final isEnabled = fieldBlocIsEnabled(
                 isEnabled: widget.isEnabled,
