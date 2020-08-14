@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_form_bloc/flutter_form_bloc.dart';
+import 'package:signature/signature.dart';
 
 void main() {
   runApp(App());
@@ -45,6 +46,8 @@ class AllFieldsFormBloc extends FormBloc<String, String> {
 
   final time1 = InputFieldBloc<TimeOfDay, Object>();
 
+  final signature = InputFieldBloc<List<Point>, Object>();
+
   AllFieldsFormBloc() {
     addFieldBlocs(fieldBlocs: [
       text1,
@@ -56,6 +59,7 @@ class AllFieldsFormBloc extends FormBloc<String, String> {
       date1,
       dateAndTime1,
       time1,
+      signature,
     ]);
   }
 
@@ -280,6 +284,13 @@ class _AllFieldsFormState extends State<AllFieldsForm> {
                           decoration: InputDecoration(
                             labelText: 'TimeFieldBlocBuilder',
                             prefixIcon: Icon(Icons.access_time),
+                          ),
+                        ),
+                        SignatureFieldBlocBuilder(
+                          inputFieldBloc: formBloc.signature,
+                          decoration: InputDecoration(
+                            labelText: 'SignatureFieldBlocBuilder',
+                            prefixIcon: Icon(Icons.border_color),
                           ),
                         ),
                         SwitchFieldBlocBuilder(

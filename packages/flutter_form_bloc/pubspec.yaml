@@ -17,6 +17,7 @@ dependencies:
   rxdart: ^0.24.1
   flutter_keyboard_visibility: ^3.2.1
   collection: ^1.14.12
+  signature: ^3.2.0
   intl: ">=0.15.1 <0.17.0"
 
 dev_dependencies:
