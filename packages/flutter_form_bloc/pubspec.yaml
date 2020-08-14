@@ -11,14 +11,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  bloc: ^6.0.0
-  flutter_bloc: ^6.0.0
-  form_bloc: ^0.19.0
-  # form_bloc:
-  #   path: ../form_bloc
-  rxdart: ^0.24.0
-  flutter_keyboard_visibility: ^3.0.0
-  collection: ^1.14.11
+  bloc: ^6.0.1
+  flutter_bloc: ^6.0.1
+  form_bloc: ^0.19.1
+  rxdart: ^0.24.1
+  flutter_keyboard_visibility: ^3.2.1
+  collection: ^1.14.12
   intl: ">=0.15.1 <0.17.0"
 
 dev_dependencies:
